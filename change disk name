@@ -1,0 +1,21 @@
+查看当前所有分区
+sudo fdisk -l
+
+查看所有分区的磁盘格式
+df -T
+
+先卸载要修改名称的分区
+sudo umount /dev/sda2
+
+修改名称
+sudo ntfslabel /dev/sda2 newname
+
+
+umount: /mnt/fourt: device is busy.
+        (In some cases useful info about processes that use
+         the device is found by lsof(8) or fuser(1))
+ Resolution：
+ fuser -m -u /mnt/fourt
+/mnt/fourt:          14917c(root) 14918c(root)
+kill -9 14917
+kill -9 14918
