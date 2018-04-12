@@ -8,7 +8,7 @@
 
 ## csr_matric是稀疏矩阵按行存储Compressed Sparse Row (CSR)存储原理
 
-![1](/home/truthliu/Desktop/1.png)
+![image](https://github.com/TruthLiu/Linux/1.png)
 
 ## indptr=[0,2,4,7,9]
 
