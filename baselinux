@@ -6,3 +6,8 @@ cp ../Destop/1.jpg .
 
 修改文件名称
 mv test1 Test
+
+ReadTimeoutError: HTTPSConnectionPool(host='pypi.python.org', port=443): Read timed out.
+pip --default-timeout=100 install XXX
+
+
