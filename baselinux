@@ -10,4 +10,13 @@ mv test1 Test
 ReadTimeoutError: HTTPSConnectionPool(host='pypi.python.org', port=443): Read timed out.
 pip --default-timeout=100 install XXX
 
-
+写文件命令
+cat >a.txt <<EOF
+>nihao
+>tahao
+>EOF（结束符）
+或者　cat >a.txt ｅｎｔｅｒ键
+nihao
+tahao
+Ctrl+Z(退出)
+echo -e "nihao \n tahao" >a.txt #-e是开启转义
