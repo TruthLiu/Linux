@@ -1,0 +1,424 @@
+课程回顾：
+	三道面试提：
+		分而治之
+		分区     .hashCode()%分区的个数
+		布隆过滤器
+	大数据的介绍：
+		4v
+		集群：
+		分布式
+		负载均衡
+	hadoop的介绍：
+		1.doung   cutting
+		2.三大论文   GFS----HDFS    MAPREDUCE---MAPREDUCE    BIGTABLE----HBASE
+		3.hadoop是什么
+		4.hadoop的基本模块：
+			hadoop1:hdfs    MAPREDUCE
+			hadoop2:coomon    hdfs    MAPREDUCE  yarn
+		安装：完全分布式
+新课：
+	安装过程中遇到的问题：
+		1）集群启动日志：
+			/home/hadoop/apps/hadoop-2.7.6/logs  存放集群的日志信息
+			hadoop（进程归属）-hadoop（用户名）-datanode（进程名）-hadoop01（节点）.log
+			yarn-hadoop-nodemanager-hadoop01.log
+			日志监听：
+				tail -f 文件路径
+				tail -f/F yarn-hadoop-nodemanager-hadoop01.log
+				tail -100 yarn-hadoop-nodemanager-hadoop01.log  查看日志信息
+				看集群是否有问题  最核心的是看日志文件  日志文件不报错  肯定没有问题
+		
+		2）主机名
+			unknown hostname
+			/etc/sysconfig/network
+			/etc/hosts
+		3)启动的时候某一个进程启动不了
+			先检查日志文件有没有报错  日志文件报错，排除错误  重新启动  
+			日志文件没有报错
+			hadoop02   start-dfs.sh
+			自身上启动：datanode   secondarynamenode
+			hadoop01启动：
+				远程登录到hadoop01    再在hadoop01上启动相关进程
+			hadoop03启动：
+				远程登录到hadoop03    再在hadoop03上启动相关进程
+			1）先把集群全部停掉   重启   暴力
+			stop-dfs.sh
+			start-dfs.sh
+			2)缺哪一个进程  单独启动
+			hdfs的相关进程，单独启动的命令：
+				hadoop-daemon.sh start  hdfs的进程
+				hadoop-daemon.sh start namenode
+				hadoop-daemon.sh start datanode
+				hadoop-daemon.sh start secondarynamenode
+				哪个节点上缺  在哪一个节点上执行
+			yarn的相关命令，单独启动的命令:
+				yarn-daemon.sh start yarn的相关命令
+				yarn-daemon.sh start resourcemanager
+				yarn-daemon.sh start nodemanager
+		4）格式化的问题：
+			成功的格式化只能进行一次   如果不成功 一直努力 直到成功
+			hdfs的格式化在做什么事情：
+				创建namenode的数据存储目录  生成最初的元数据
+				集群最初的元数据信息：fsimage_0000000000000000000  fsimage_0000000000000000000.md5  seen_txid  VERSION
+				在这个元数据中有一个重要的信息：VERSION----记录的是集群当前的版本号   每次格式化一次都会生成一个全新的
+					namespaceID=163052539     
+					clusterID=CID-e10d7808-c7ea-48b6-832c-05801cad0b9f   集群的id
+								同一个集群这个值一定相同的
+					cTime=0
+					storageType=NAME_NODE
+					blockpoolID=BP-54673466-192.168.40.201-1531445892504   块池id
+					layoutVersion=-63
+				datanode的目录结构是在集群启动的过程中自动创建的：
+					current：datanode的信息  in_use.lock：锁文件   标志这个节点上启动了一个datanode进程   如果在启动另外一个就不允许启动  保证一个节点启动一个datanode进程
+					VERSION:
+						storageID=DS-34cc3c93-efa6-41a5-9c30-0ba20c3a6982
+						clusterID=CID-e10d7808-c7ea-48b6-832c-05801cad0b9f  集群id
+						cTime=0
+						datanodeUuid=e215a9f5-9a6c-4f9f-b029-fc32b7f3733b
+						storageType=DATA_NODE
+						layoutVersion=-56
+			如果成功格式化之后启动了集群后又进行格式化，namenode的集群id信息会发生改变，datanode记录的集群id还是原来的，这时候就会造成datanode、namenode启动不了
+			集群关闭的命令：
+			stop-dfs.sh      任意一个
+			stop-yarn.sh     在yarn的主节点
+		5）时间同步问题：
+			机器不能联网：
+				手动进行同步
+				date -s ""
+			能联网的时候：
+				外部的时间服务器、自己搭建时间服务器
+				ntpdate "时间同步器的网址"
+			目的：是为了和北京时间保持一致吗？不是
+			是为了集群中各个节点之间的时间保持一致   集群中的各个节点需要通信   时间戳
+		6）环境变量的配置：
+			/etc/profile------系统环境变量
+			~/.bashrc-------用户环境变量----针对当前用户的
+			 ~/.bash_profile-----用户环境变量----针对当前用户的
+			加载顺序：
+				系统的环境变量》》》》~/.bash_profile》》》~/.bashrc
+			生效顺序：
+				最后加载的最终生效
+
+		ps：在hadoop中 每个节点的自身的数据存储在自己的节点上
+	集群安装的5中模式：
+		单机：解压
+			安装在一个节点上
+			不存在分布式文件系统  所有文件文件存取都是本地模式
+			数据来源于本地存储   linux本地存储  
+				生产上肯定不用    基本上不用   本地测试的时候会使用，快
+		伪分布式：
+			安装一个节点上：
+			存在分布式文件系统的，所有进程全部运行在一台机器上  存在主从结构的
+			也是分布式
+			生产不会用    个人学习的时候   用的时候和完全分布式一样的
+		完全分布式：
+			主从结构的，运行在多个节点上   一个主节点    多个从节点
+			在用户看来  多个节点就是一个整体
+			实际上，多个节点共同提供服务  依赖于namenode进行联系的
+			完全分布式生产中用的比较少，集群的节点数比较少的时候20个以下
+			缺陷：
+				一个主节点，一个冷备份节点
+				主节点的压力大   如果有一天namenode宕机了   集群不能正常访问   集群处于瘫痪状态
+				存在主节点的单点故障
+		高可用：
+			多个主节点，多个从节点
+			多个主节点中同一时间只有一个主节点对外提供服务，我们称之为active namenode,其他主节点处于热备份状态 standby namenode，时刻监控active主节点的状态，当active namenode宕机的时候  standny namenode立即进行切换,切换为active namenode,standby namenode必须实时和active namenode的元数据保持一致
+			依赖于zookeeper    zookeeper的讲完之后进行搭建
+			虽然有多个主节点，但是同一时间只有一个是active的，集群中真正服务的主节点仍然是一台机器的能力，如果我的集群非常大，10000台从节点机器，每台datanode的存储数据的元数据信息都需要存储在namenode中，namenode的压力回很大，namenode存储的东西过多，进行数据访问的时候效率过低，学这个时候需要帮namenode分担压力，通一时间有多个主节点对外提供服务
+			使用的最广泛的集群模式
+		联邦模式：适用于超大集群  
+			块池：联邦模式中标志数据块的管理权限的		
+			blockpoolID=BP-54673466-192.168.40.201-1531445892504
+			这个指的是当前的namenode所管理的块池的名字
+			同一时间会有多个namenode共同服务
+			多个namenode之间相互协作的时候依赖于块池id,来区分哪个数据归属哪一个namenode管理
+			多个namenode共同管理集群中的所有datanode    分工明确的  每个namenode只负责管理datanode上自己块池的数据
+
+			联邦+高可用
+
+
+hadoop：
+	common   hdfs     mapreduce    yarn
+	操作系统     文件系统            应用程序
+	windows		ntfs               qq   微信
+	yarn        hdfs               mapreduce
+hdfs：hadoop distributed file syatem分布式文件系统
+	使用命令：
+		文件上传的命令：
+			hdfs的文件目录是怎么样的？
+			在hdfs中文件系统类似于linux    以/为根目录
+			在hdfs中只有绝对路径的访问方式  没有相对路径的访问方式   /开始
+			hadoop fs -put 本地文件   hdfs路径
+			hadoop fs -put hadoop-2.7.6.tar.gz /
+			查看文件的命令：
+				hadoop fs -ls 路径
+				hadoop fs -ls /
+	设计思想：
+		1)分块存储
+		100T文件   存在3个节点  怎么存？
+		100T存在一个节点上吗？直接存储在一台机器上  合理吗？不合理   负载不均衡
+		100T分成多个部分进行存储，分块存储
+		每个部分（块）应该分很多合适？1T    文件2T ----2个块   负载不均衡
+		块太大不合适----负载不均衡
+		块大小1kb合适吗？不合适   元数据存储的时候  一个块会存储一条元数据   存很多元数据
+						namenode的压力很大   
+		hadoop中已经对块做了设计：
+			hadoop1：块大小默认64M 
+			hadoop2:块大小默认是128M
+			dfs.blocksize    134217728     128M
+			集群中的所有的配置如果没有进行配置默认使用自己的的默认配置：
+				/home/hadoop/apps/hadoop-2.7.6/share/hadoop/
+				目录下的jar包中
+				core-default.xml
+				hdfs-default.xml
+				yarn-default.xml
+				mapred-default.xml
+			想要修改  只需要修改这个参数：
+				hdfs-site.xml
+				<property>
+					<name>dfs.blocksize</name>
+					<value>46472828</value>
+				</property>
+			自己进行配置了  则会覆盖原始的默认配置
+			如果有一个文件300M----分成几块3块  
+				块1:0-127
+				块2:128-255
+				块3:256-300M   44M  不满128M   仍然会单独成一个块  块的实际大小44M
+			又来一个文件  150M  接着上一个的存  还是自己独立存储
+				自己独立进行存
+				块4:0-127
+				块5:128-150
+			如果文件存储完了，块不够128M 就按照实际的进行存储   单独存一个块
+		2）备份存储----副本机制
+			副本概念：备份     复制出来的
+			在hdfs中数据块的存储是采用多副本存储的	
+			副本：没有主次之分  多个副本之间是相互互为副本   地位一样的
+			默认存储的副本个数：3
+			dfs.replication	3
+			dfs.replication=2
+			一个块这里配置了几个副本  就会复制几份出来
+			1）副本个数的含义   如果配置了副本  则会覆盖默认的
+			3个节点   副本2个  每一个块存2份 假设有一个块损坏了   块1个
+			这个时候hdfs会进行复制  达到块的个数2
+			假设复制完了   刚才的损坏的块又恢复了  块的个数3   这个时候块多1个，namenode在一定的时间内如果发现还是3个块  则会删除一个块  最终达到2个块
+			2）同一个块多副本如何存储：
+				多副本存在一个节点上有没有意义？没有意义的   如果机器宕机所有副本都没有了
+				每个副本存储在不同的节点上   任何两个副本都不可能存储在相同的节点上
+				多副本机制----保证将硬件故障作为常态
+				每一个节点上只能存储同一个块的一个副本   一个节点上可以存多个块  但是这些块都是不同的块
+			3）节点2个   副本4个
+				实际存储的时候会存储2个，集群会进行记账，欠2个副本，当集群中的节点个数增加的时候会进行复制，最终复制到4个
+			4）副本个数越多越好吗？
+				副本个数越多数据安全性越高    但是数据维护起来越困难  成本加大
+				100节点     80个
+			hdfs底层用空间换取数据安全的   
+			如果说配置2分副本     1T文件------2T空间
+			硬件成本比较低
+	hdfs的架构：
+		主从架构：
+			主节点  namenode：
+				作用：1）管理元数据
+					元数据：包括3部分内容：
+						1）抽象目录树
+							hdfs是一个文件系统  类似于linux  根目录/（所有集群共同存储的根目录，不指某一台机器的根目录，咱们这里指的是3台机器的共同存储的根，三台机器存储的抽象根目录）
+						这里的抽象目录树指的是hdfs上的文件目录结构
+						2）数据和块的映射关系
+							块信息：
+								Block ID: 1073741825    全局（整个hdfs集群）唯一   块的标识  每一个块都有自己唯一的id
+								Block Pool ID: BP-54673466-192.168.40.201-1531445892504   集群的块池   一个namenode只对应一个块池
+								Generation Stamp: 1001
+								Size: 134217728   128M
+								
+
+							hadoop-2.7.6.tar.gz
+								blk_1073741825
+								blk_1073741826
+						3)数据块的存储位置
+								Availability:数据块的存储位置
+								hadoop02
+								hadoop01
+						元数据的位置：
+						<property>
+						 <name>dfs.datanode.data.dir</name>
+						 <value>/home/hadoop/data/hadoopdata/data</value>
+						<description>datanode 的数据存储目录</description>
+						</property>
+						/home/hadoop/data/hadoopdata/name/current
+					2）接受客户端的读（下载）写（上传）请求
+			datanode：从节点
+				1）负责真正的数据存储：
+					分块多副本存储的
+						存储的路径：
+							<property>
+							 <name>dfs.datanode.data.dir</name>
+							 <value>/home/hadoop/data/hadoopdata/data</value>
+							<description>datanode 的数据存储目录</description>
+							</property>
+						/home/hadoop/data/hadoopdata/data/current/BP-54673466-192.168.40.201-1531445892504/current/finalized/subdir0/subdir0
+						blk_1073741825            blk_1073741826
+				2）负责处理客户端的真正读写请求
+			secondarynamenode：
+				是namenode的备份节点    冷   namenode的助理
+				1）帮助namenode进行元数据备份   帮他进行恢复
+				2）帮namenode做一些工作，减轻namenode的压力
+
+	hdfs的优缺点：
+		优点：
+			1）成本低   普通的廉价机上就可以使用   个人cp    廉价的二手服务器
+				hdfs设计的时候  以硬件故障作为常态
+			2）高容错性
+				副本机制
+				一个机器宕机的时候不影响数据的访问
+			3）适合批量数据访问
+				离线数据访问
+			4）适合大数据访问
+				PB   EB       横向扩展能力   1台节点---10----100     1000w+
+			5）流式访问
+				一次写入  多次读取
+				不支持修改的   分块多副本
+				hadoop   206M    2个块  修改的成本高
+		缺点：
+			1）不支持低延迟数据访问    不支持实时的数据访问
+				数据访问  高延迟的
+			2）不擅长存储大量的小文件
+				1）寻址时间过长
+				进行数据访问先去访问元数据，假设100W   1kb的文件，存储的块100W个块，记录100W条元数据，花费很长的时间在元数据检索上，元数据检索1s（寻址时间）   真正的数据读取1ms的时间
+				寻址时间远远大于数据读取时间   不划算
+				2）namenode的压力过大
+				底层元数据存储的时候一个块存储一条元数据，一条元数据150byte
+				1000000*150byte=150000000byte=15M
+				namenode中存储大量的元数据信息    增加namenode的压力
+			3）不支持文件修改 （对文件内容的修改）  支持文件内容追加  不建议使用
+	hdfs的使用：
+		shell：这个使用的比较广泛的
+			启动hadoop的客户端：
+			hadoop/hdfs
+				hadoop namemode -format
+			fs       run a generic filesystem user client
+			hadoop fs 
+				    [-appendToFile <localsrc> ... <dst>]
+				    	文件追加  将本地文件追加到hdfs的指定的文件上   追加到末尾
+						hadoop fs -appendToFile merge01.txt /aa.txt
+				    	不建议使用
+			        [-cat [-ignoreCrc] <src> ...]
+			        	查看文件的命令
+			        [-checksum <src> ...]
+			        [-chgrp [-R] GROUP PATH...]
+			        	修改组的命令
+			        [-chmod [-R] <MODE[,MODE]... | OCTALMODE> PATH...]
+			        	修改权限的
+			        [-chown [-R] [OWNER][:[GROUP]] PATH...]
+			        	修改用户
+			        [-copyFromLocal [-f] [-p] [-l] <localsrc> ... <dst>]---api
+			        文件上传
+			        hadoop fs -copyFromLocal hadoop-hadoop-datanode-hadoop02.log /
+			        put
+			        [-copyToLocal [-p] [-ignoreCrc] [-crc] <src> ... <localdst>]
+			        文件下载
+			        hadoop fs -copyToLocal /hadoop-hadoop-datanode-hadoop02.log ./
+			        可以自定义给一个文件名
+			        [-count [-q] [-h] <path> ...]
+			               5            3          216983315 /
+			               目录的个数    文件的个数   大小
+			        	计数统计的
+			        [-cp [-f] [-p | -p[topax]] <src> ... <dst>]
+			        	复制的
+			        hadoop fs -cp /hadoop-hadoop-datanode-hadoop02.log /cp01.txt
+			        [-createSnapshot <snapshotDir> [<snapshotName>]]
+			        [-deleteSnapshot <snapshotDir> <snapshotName>]
+			        [-df [-h] [<path> ...]]
+			        	查看磁盘占有率
+			        	 hadoop fs -df -h /   查看指定路径的磁盘占有
+			        [-du [-s] [-h] <path> ...]
+			        	查看文件或目录大小
+			        	 hadoop fs -du -h /
+			        [-expunge]
+			        [-find <path> ... <expression> ...]
+			        [-get [-p] [-ignoreCrc] [-crc] <src> ... <localdst>]
+			        文件下载
+			        hadoop fs -get /hadoop-hadoop-datanode-hadoop02.log ./
+			        hadoop fs -get hdfs文件路径  本地路径
+			        [-getfacl [-R] <path>]
+			        [-getfattr [-R] {-n name | -d} [-e en] <path>]
+			        [-getmerge [-nl] <src> <localdst>]
+			        	合并下载   
+			        	hadoop fs -getmerge 多个文件hdfs路径  本地路径
+			        	hadoop fs -getmerge /aa.txt /cp01.txt ./merge01.txt
+			        	将hdfs上的多个文件进行合并下载   根据你的路径的先后顺序
+ 			        [-help [cmd ...]]   查看帮助
+			        [-ls [-d] [-h] [-R] [<path> ...]]
+			        	查看目录的
+			        	-R   递归显示目录
+			        	hadoop fs -ls -R /
+			        	hadoop fs -lsr /  递归显示
+			        [-mkdir [-p] <path> ...]
+			        -p  创建父目录
+			        	创建文件夹的
+			        [-moveFromLocal <localsrc> ... <dst>]
+			        	了解
+			        	从本地上传文件   上传完成之后 本地文件删除
+			        	hadoop fs -moveFromLocal aa.txt /
+			        [-moveToLocal <src> <localdst>]
+			        	了解
+			        	从hdfs移动到本地   hdfs上的文件被删除
+			        	不可用的
+			        [-mv <src> ... <dst>]
+			        移动   从hdfs移动到hdfs
+			        hadoop-hadoop-datanode-hadoop02.log
+			        [-put [-f] [-p] [-l] <localsrc> ... <dst>]
+			        	-put 本地文件   hdfs的文件系统
+			        	hadoop fs -put hadoop-hadoop-datanode-hadoop02.log hdfs://hadoop01:9000/test
+			        	文件上传的
+			        	hdfs的全路径：
+			        	hdfs://hadoop01:9000/   根目录的全路径	
+			        [-renameSnapshot <snapshotDir> <oldName> <newName>]
+			        [-rm [-f] [-r|-R] [-skipTrash] <src> ...]
+			        linux:rm -rf
+			        	文件删除的
+			        	-r|R递归删除   -f force  强制删除
+			        	hadoop fs -rm -r -f /test   递归强制删除
+			        	hadoop fs -rm 文件路径   删除文件
+			        [-rmdir [--ignore-fail-on-non-empty] <dir> ...]
+			        	删除文件夹   空文件夹
+			        	hadoop fs -rmdir /cc
+			        [-setfacl [-R] [{-b|-k} {-m|-x <acl_spec>} <path>]|[--set <acl_spec> <path>]]
+			        [-setfattr {-n name [-v value] | -x name} <path>]
+			        [-setrep [-R] [-w] <rep> <path> ...]
+			        	调整文件或目录的副本个数的
+			        	hadoop fs -setrep 3 /aa.txt   修改副本个数为3
+			        	shell命令的方式进行修改   把原来的配置文件覆盖了
+			        	-w    wait      等待复制完成
+			        	-R     修改目录的时候代表递归修改其下面的所有文件的副本个数
+			        	hadoop fs -setrep -w 4 -R /aa
+			        [-stat [format] <path> ...]
+			        [-tail [-f] <file>]
+			        	显示末尾的   显示末尾1kb的数据
+			        	hadoop fs -tail /aa.txt
+			        [-test -[defsz] <path>]
+			        [-text [-ignoreCrc] <src> ...]
+			        	以文本方式显示    zip   jar 
+			        	hadoop fs -text /hadoop.tar.gz
+			        [-touchz <path> ...]
+			        	新建文件   空文件
+			        	hadoop fs -touchz /yy
+			        [-truncate [-w] <length> <path> ...]
+			        [-usage [cmd ...]]
+
+
+			        重点：
+			        	mkdir
+			        	cat
+			        	put
+			        	get  
+			        	tail 
+			        	chmod
+			        	chown
+			        	df
+			        	du
+			        	ls
+			        	rm -r -f
+			        	setrep
+
+
+		api的方式：
+			
